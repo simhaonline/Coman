@@ -1,0 +1,5 @@
+#!/bin/bash
+path=$(sed -nr '/Location/p' < <(pip show pytest) | cut -d' ' -f2)
+
+cp -r coman $path
+
