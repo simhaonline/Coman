@@ -7,23 +7,33 @@ Created on Sat Aug  8 20:11:45 2020.
 """
 
 from coman import ConnectionManager
-from requests import get
+from bs4 import BeautifulSoup
 
-ip = get('https://api.ipify.org').text
-print(f"L'adresse IP courante est : {ip}")
-
+# To create a connexion manager.
 cm = ConnectionManager(str_vpn='nordvpn', str_tor_pwd='1234')
 
+# Bascis usage.
 ip = cm.request('https://ifconfig.me')
-print(f"L'adresse IP de la requete en utilisant tor est : {ip}")
+print(f"The IP a the exit node is : {ip}")
 
+# Requesting new identity.
 cm.new_identity()
 ip = cm.request('https://api.ipify.org')
-print(f"L'adresse IP après demande de nouvelle identité est : {ip}")
+print(f"The IP of the new exit node is : {ip}")
 
+# Making a requests without TOR.
 ip = cm.request('https://api.ipify.org', bl_clear=True)
-print(f"L'adresse IP courante est : {ip}")
+print(f"The public IP is : {ip}")
 
-cm.is_vpn_on()
+# Example.
 
-cm.vpn_new_connexion()
+# URL to scrap.
+str_url = 'http://quotes.toscrape.com/'
+
+# Scraping to URL using TOR and a random user agent.
+soup = BeautifulSoup(cm.request(str_url), 'lxml')
+quotes = soup.findAll('div', {'class': 'quote'})
+quote = quotes[0].find('span', {'class': 'text'}).text
+author = quotes[0].find('small', {'class': 'author'}).text
+
+print(f'{quote}\n\t\t\t\t\t-{author}')

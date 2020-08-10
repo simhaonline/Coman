@@ -133,9 +133,9 @@ class ConnectionManager:
 
         # Request through TOR or not.
         if not bl_clear and self.proxies is not None:
-            request = requests.get(url, proxies=self.proxies).text
+            request = requests.get(url, proxies=self.proxies, headers=self.user_agent).text
         else:
-            request = requests.get(url).text
+            request = requests.get(url, headers=self.user_agent).text
 
         return request
 
