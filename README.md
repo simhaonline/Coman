@@ -38,8 +38,10 @@ You can start tor on boot with :
 
 Now you can use TOR as a service, but in order to request a new identity you need to configure the TOR controller. In the file `/etc/tor/torrc` use the parameters :
 
-`ControlPort 9051
-CookieAuthentication 1`
+```
+ControlPort 9051
+CookieAuthentication 1
+```
 
 Now you need to choose a password for TOR, and run the command `tor --hash-password <your_password>` which will give you a hash for your password that your place in the `/etc/tor/torrc` file :
 
