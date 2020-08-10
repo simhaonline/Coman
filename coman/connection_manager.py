@@ -160,7 +160,7 @@ class ConnectionManager:
     def vpn_new_connexion(self, *args):
         """Asks a new connexion from the VPN. Honestly should not be used, but I left it there."""
         int_status = subprocess.Popen(self.vpn_connect + list(args),
-                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+                                      stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
         return int_status == 0
 
@@ -171,7 +171,7 @@ class ConnectionManager:
     def is_vpn_on(self):
         """Check if the VPN is running."""
         int_status = subprocess.Popen(self.vpn_status,
-                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+                                      stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
         return int_status == 0
 
@@ -179,7 +179,7 @@ class ConnectionManager:
     def internet_on():
         """Methode qui verifie si une connexion a internet existe ou non."""
         int_status = subprocess.Popen(['wget', '-q', '--spider', 'http://google.com'],
-                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+                                      stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
         return int_status == 0
 
@@ -187,6 +187,6 @@ class ConnectionManager:
     def is_service_running(str_service):
         """Check if a service is running or not."""
         int_status = subprocess.Popen(['/usr/sbin/service', str_service, 'status'],
-                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+                                      stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
         return int_status == 0
