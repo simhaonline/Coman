@@ -38,13 +38,15 @@ You can start tor on boot with :
 
 Now you can use TOR as a service, but in order to request a new identity you need to configure the TOR controller. In the file `/etc/tor/torrc` use the parameters :
 
-`ControlPort 9051
-CookieAuthentication 1`
+```
+ControlPort 9051
+CookieAuthentication 1
+```
 
 Now you need to choose a password for TOR, and run the command `tor --hash-password <your_password>` which will give you a hash for your password that your place in the `/etc/tor/torrc` file :
 
 `
-HashedControlPassword 16:E06D936E26108CCA604AA31B0A24277D188F1B7BCC1ABE504AFE5EA02F`
+HashedControlPassword 16:<your_hash>`
 
 If you consider using TOR with python, you might want to also get a VPN to run TOR over VPN, it's my advice anyway. VPNs are widely available on line, but are mostly paid services.
 
