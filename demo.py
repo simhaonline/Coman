@@ -3,7 +3,7 @@
 """
 Created on Sat Aug  8 20:11:45 2020.
 
-@author: tristan
+@author: Tristan Muscat
 """
 
 from coman import ConnectionManager
