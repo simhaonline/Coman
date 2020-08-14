@@ -58,7 +58,7 @@ Content of the `demo.py` file :
 from coman import ConnectionManager
 from bs4 import BeautifulSoup
 
-# To create a connexion manager.
+# To create a connection manager.
 cm = ConnectionManager(str_vpn='nordvpn', str_tor_pwd='1234')
 
 # Bascis usage.

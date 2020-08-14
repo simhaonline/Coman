@@ -9,7 +9,33 @@ Created on Sat Aug  8 20:11:45 2020.
 from coman import ConnectionManager
 from bs4 import BeautifulSoup
 
-# To create a connexion manager.
+# Using class methods
+
+# Getting our public IP.
+request = ConnectionManager.request(url='https://ifconfig.me')
+soup = BeautifulSoup(request, 'lxml')
+ip = soup.find('strong', {'id': 'ip_address'}).text
+
+# Getting our TOR exit node IP.
+request = ConnectionManager.request(url='https://ifconfig.me', str_tor_pwd='1234')
+soup = BeautifulSoup(request, 'lxml')
+ip = soup.find('strong', {'id': 'ip_address'}).text
+# Adding the 'str_tor_pwd' parameter is what indicate that we want our request to be sent via TOR.
+
+# Requesting a new TOR connection.
+ConnectionManager.new_identity(str_tor_pwd='1234')
+
+# Getting our new TOR exit node IP.
+request = ConnectionManager.request(url='https://ifconfig.me', str_tor_pwd='1234')
+soup = BeautifulSoup(request, 'lxml')
+ip = soup.find('strong', {'id': 'ip_address'}).text
+
+
+# Using a connection manager object.
+# It does essentially the samething, but using an instance helps keep track
+# of useragents and set your preferences once.
+
+# To create a connection manager.
 cm = ConnectionManager(str_vpn='nordvpn', str_tor_pwd='1234')
 
 # Bascis usage.

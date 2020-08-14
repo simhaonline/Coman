@@ -11,30 +11,62 @@ Created on Thu Feb 22 13:58:25 2018.
 # =====================================================================================================================
 
 import subprocess                    # to use bash commands (check if a service is active, if internet is on, ect.)
-from stem import Signal              # To get a new TOR connexion
-from stem.control import Controller  # To get a new TOR connexion
+from stem import Signal              # To get a new TOR connection
+from stem.control import Controller  # To get a new TOR connection
 import requests                      # To manage requests
 
-import time                          # To wait bitween two new TOR connexion requests
+import time                          # To wait bitween two new TOR connection requests
 import random as rdm                 # To randomize user agents
 
 from .conf import USERAGENTS
 from .conf import VPN
 
+# =============================================================================
+# Hybrid methods
+# =============================================================================
+
+
+class hybridmethod:
+    """Allow to declare a class and instance version of the same method."""
+
+    def __init__(self, fclass, finstance=None, doc=None):
+        self.fclass = fclass
+        self.finstance = finstance
+        self.__doc__ = doc or fclass.__doc__
+        # support use on abstract base classes
+        self.__isabstractmethod__ = bool(
+            getattr(fclass, '__isabstractmethod__', False)
+        )
+
+    def classmethod(self, fclass):
+        """Class method version of the function."""
+        return type(self)(fclass, self.finstance, None)
+
+    def instancemethod(self, finstance):
+        """Instance method version of the function."""
+        return type(self)(self.fclass, finstance, self.__doc__)
+
+    def __get__(self, instance, cls):
+        """Retreive the right version."""
+        if instance is None or self.finstance is None:
+            # either bound to the class, or no instance method available
+            return self.fclass.__get__(cls, None)
+        return self.finstance.__get__(instance, cls)
+
 # =====================================================================================================================
-# Module de gestion de connexion
+# Module de gestion de connection
 # =====================================================================================================================
 
 
 class ConnectionManager:
-    """Connexion manager.
+    """Connection manager.
 
     Attributes
     ----------
     str_ip: str
         The current IP address. Useful when using TOR.
     str_ip_old: str
-        The previous IP address to check if the new TOR connexion requested took effect.
+        The previous IP address to check if the new TOR connection requested took effect.
     lst_useragents: list
         List of user agents to use.
     user_agent: dict
@@ -42,19 +74,24 @@ class ConnectionManager:
     vpn_status: list
         Arguments to check the vpn status.
     vpn_connect: list
-        Arguments to ask a new connexion from the vpn.
+        Arguments to ask a new connection from the vpn.
     str_tor_pwd: str
         TOR password.
     proxies: dict
         Proxy used by TOR.
     """
 
+    dict_proxies = {
+        'http': 'socks5://127.0.0.1:9050',
+        'https': 'socks5://127.0.0.1:9050'
+    }
+
 # =====================================================================================================================
 # Initialisation
 # =====================================================================================================================
 
     def __init__(self, str_useragent=None, str_vpn=None, str_tor_pwd=None):
-        """Initialize the connexion manager.
+        """Initialize the connection manager.
 
         Parameters
         ----------
@@ -66,12 +103,12 @@ class ConnectionManager:
         str_tor_pwd : str, optional
             TOR password, can be empty. If None then TOR is not used. The default is None.
         """
-        # Initialisation du connexion manager, les IP sont à 0.0.0.0 et sont changés plus tard
+        # Initialisation du connection manager, les IP sont à 0.0.0.0 et sont changés plus tard
         self.str_ip = '0.0.0.0'
         self.str_ip_old = '0.0.0.0'
+        self.str_tor_pwd = str_tor_pwd
         self._set_useragents(str_useragent)
         self._set_vpn(str_vpn)
-        self._set_tor(str_tor_pwd)
 
     def _set_useragents(self, str_useragent=None):
         """Set the user agents list or use the single user agent provided."""
@@ -92,27 +129,47 @@ class ConnectionManager:
         if str_vpn is not None:
             dict_vpn = VPN.dict_vpn
             self.vpn_status = dict_vpn['vpn_is_on'][str_vpn]
-            self.vpn_connect = dict_vpn['vpn_new_connexion'][str_vpn]
+            self.vpn_connect = dict_vpn['vpn_new_connection'][str_vpn]
         else:
             self.vpn_status = None
             self.vpn_connect = None
 
-    def _set_tor(self, str_tor_pwd):
-        """Set the variables used for tor."""
-        self.str_tor_pwd = str_tor_pwd
-        # If a password is provided, then tor has to be set up.
-        if self.str_tor_pwd is not None:
-            self.proxies = {
-                'http': 'socks5://127.0.0.1:9050',
-                'https': 'socks5://127.0.0.1:9050'
-            }
+# =====================================================================================================================
+# Connections
+# =====================================================================================================================
+
+    @hybridmethod
+    def request(cls, url, str_tor_pwd=None, dict_user_agent=None):
+        """TODO."""
+        if dict_user_agent is None:
+            dict_user_agent = {'User-Agent':
+                               USERAGENTS.lst_useragents[rdm.randint(0, len(USERAGENTS.lst_useragents) - 1)]}
+        # Request through TOR or not.
+        if str_tor_pwd is not None:
+            request = requests.get(url, proxies=ConnectionManager.dict_proxies, headers=dict_user_agent).text
         else:
-            self.proxies = None
+            request = requests.get(url, headers=dict_user_agent).text
 
-# =====================================================================================================================
-# Connexions
-# =====================================================================================================================
+        return request
 
+    @hybridmethod
+    def new_identity(cls, str_tor_pwd):
+        """Change the identity (IP and such)."""
+        # The old IP is used to know if the change took effect.
+        str_ip_old = ConnectionManager.request('https://ifconfig.me', str_tor_pwd=str_tor_pwd)
+        str_ip = str_ip_old
+
+        int_retry = 0
+        # If we get the same IP twice we wait and ask again
+        while str_ip_old == str_ip and int_retry < 5:
+            time.sleep(2)
+            int_retry += 1
+            with Controller.from_port(port=9051) as controller:
+                controller.authenticate(password=str_tor_pwd)
+                controller.signal(Signal.NEWNYM)
+            str_ip = ConnectionManager.request('https://ifconfig.me', str_tor_pwd=str_tor_pwd)
+
+    @request.instancemethod
     def request(self, url, bl_clear=False):
         """Use whatever setup we are using to make a http request.
 
@@ -132,13 +189,14 @@ class ConnectionManager:
             self.user_agent = {'User-Agent': self.lst_useragents[rdm.randint(0, len(self.lst_useragents) - 1)]}
 
         # Request through TOR or not.
-        if not bl_clear and self.proxies is not None:
-            request = requests.get(url, proxies=self.proxies, headers=self.user_agent).text
+        if not bl_clear and self.str_tor_pwd is not None:
+            request = requests.get(url, proxies=ConnectionManager.dict_proxies, headers=self.user_agent).text
         else:
             request = requests.get(url, headers=self.user_agent).text
 
         return request
 
+    @new_identity.instancemethod
     def new_identity(self):
         """Change the identity (IP and such)."""
         # The old IP is used to know if the change took effect.
@@ -157,8 +215,8 @@ class ConnectionManager:
         # We try 5 times to get a new IP and if it doesn't work the program juste continues. I don't want it to crash
         # just for that. Also it has never happend.
 
-    def vpn_new_connexion(self, *args):
-        """Asks a new connexion from the VPN. Honestly should not be used, but I left it there."""
+    def vpn_new_connection(self, *args):
+        """Asks a new connection from the VPN. Honestly should not be used, but I left it there."""
         int_status = subprocess.Popen(self.vpn_connect + list(args),
                                       stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
@@ -177,7 +235,7 @@ class ConnectionManager:
 
     @staticmethod
     def internet_on():
-        """Methode qui verifie si une connexion a internet existe ou non."""
+        """Methode qui verifie si une connection a internet existe ou non."""
         int_status = subprocess.Popen(['wget', '-q', '--spider', 'http://google.com'],
                                       stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
