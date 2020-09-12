@@ -140,7 +140,7 @@ class ConnectionManager:
 
     @hybridmethod
     def request(cls, url, str_tor_pwd=None, dict_user_agent=None):
-        """TODO."""
+        """Get the HTTP code of a webpage."""
         if dict_user_agent is None:
             dict_user_agent = {'User-Agent':
                                USERAGENTS.lst_useragents[rdm.randint(0, len(USERAGENTS.lst_useragents) - 1)]}
@@ -156,7 +156,7 @@ class ConnectionManager:
     def new_identity(cls, str_tor_pwd):
         """Change the identity (IP and such)."""
         # The old IP is used to know if the change took effect.
-        str_ip_old = ConnectionManager.request('https://ifconfig.me', str_tor_pwd=str_tor_pwd)
+        str_ip_old = ConnectionManager.request('https://api.ipify.org', str_tor_pwd=str_tor_pwd)
         str_ip = str_ip_old
 
         int_retry = 0
@@ -167,7 +167,15 @@ class ConnectionManager:
             with Controller.from_port(port=9051) as controller:
                 controller.authenticate(password=str_tor_pwd)
                 controller.signal(Signal.NEWNYM)
-            str_ip = ConnectionManager.request('https://ifconfig.me', str_tor_pwd=str_tor_pwd)
+            str_ip = ConnectionManager.request('https://api.ipify.org', str_tor_pwd=str_tor_pwd)
+
+    @hybridmethod
+    def vpn_new_connection(cls, str_vpn):
+        """Asks a new connection from the VPN. Honestly should not be used, but I left it there."""
+        int_status = subprocess.Popen(VPN.dict_vpn['vpn_new_connection'][str_vpn] + ['fr', str(rdm.randint(550, 720))],
+                                      stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
+
+        return int_status == 0
 
     @request.instancemethod
     def request(self, url, bl_clear=False):
@@ -210,20 +218,21 @@ class ConnectionManager:
             with Controller.from_port(port=9051) as controller:
                 controller.authenticate(password=self.str_tor_pwd)
                 controller.signal(Signal.NEWNYM)
-            self.str_ip = self.request('https://ifconfig.me')
+            self.str_ip = self.request('https://api.ipify.org')
 
         # We try 5 times to get a new IP and if it doesn't work the program juste continues. I don't want it to crash
         # just for that. Also it has never happend.
 
+    @vpn_new_connection.instancemethod
     def vpn_new_connection(self, *args):
         """Asks a new connection from the VPN. Honestly should not be used, but I left it there."""
-        int_status = subprocess.Popen(self.vpn_connect + list(args),
+        int_status = subprocess.Popen(self.vpn_connect + ['fr', str(rdm.randint(550, 720))],
                                       stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
         return int_status == 0
 
 # =====================================================================================================================
-# Outils
+# Tools
 # =====================================================================================================================
 
     def is_vpn_on(self):

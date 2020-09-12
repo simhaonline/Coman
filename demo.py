@@ -39,7 +39,7 @@ ip = soup.find('strong', {'id': 'ip_address'}).text
 cm = ConnectionManager(str_vpn='nordvpn', str_tor_pwd='1234')
 
 # Bascis usage.
-ip = cm.request('https://ifconfig.me')
+ip = cm.request('https://api.ipify.org')
 print(f"The IP a the exit node is : {ip}")
 
 # Requesting new identity.
