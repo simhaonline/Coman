@@ -15,6 +15,10 @@ from stem import Signal              # To get a new TOR connection
 from stem.control import Controller  # To get a new TOR connection
 import requests                      # To manage requests
 
+import pandas as pd
+from bs4 import BeautifulSoup
+import json
+
 import time                          # To wait bitween two new TOR connection requests
 import random as rdm                 # To randomize user agents
 
@@ -130,6 +134,18 @@ class ConnectionManager:
             dict_vpn = VPN.dict_vpn
             self.vpn_status = dict_vpn['vpn_is_on'][str_vpn]
             self.vpn_connect = dict_vpn['vpn_new_connection'][str_vpn]
+
+            request = ConnectionManager.request(url='https://nordvpn.com/api/server')
+            soup = BeautifulSoup(request, 'lxml')
+            lst_servers = json.loads(soup.text)
+
+            servers = pd.DataFrame({'Country': [serv['country'] for serv in lst_servers],
+                                    'Domain': [serv['domain'] for serv in lst_servers]})
+
+            servers['Flag'] = servers['Domain'].astype(str).str.extract(r'^([a-z]{2})\d{2,4}.nordvpn.com$')
+            servers['ID'] = servers['Domain'].astype(str).str.extract(r'^[a-z]{2}(\d{2,4}).nordvpn.com$')
+
+            self.servers = servers
         else:
             self.vpn_status = None
             self.vpn_connect = None
@@ -172,8 +188,19 @@ class ConnectionManager:
     @hybridmethod
     def vpn_new_connection(cls, str_vpn):
         """Asks a new connection from the VPN. Honestly should not be used, but I left it there."""
-        int_status = subprocess.Popen(VPN.dict_vpn['vpn_new_connection'][str_vpn] + ['fr', str(rdm.randint(550, 720))],
-                                      stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
+        request = ConnectionManager.request(url='https://nordvpn.com/api/server')
+        soup = BeautifulSoup(request, 'lxml')
+        lst_servers = json.loads(soup.text)
+
+        servers = pd.DataFrame({'Country': [serv['country'] for serv in lst_servers],
+                                'Domain': [serv['domain'] for serv in lst_servers]})
+
+        servers['Flag'] = servers['Domain'].astype(str).str.extract(r'^([a-z]{2})\d{2,4}.nordvpn.com$')
+        servers['ID'] = servers['Domain'].astype(str).str.extract(r'^[a-z]{2}(\d{2,4}).nordvpn.com$')
+        int_serv = rdm.randint(0, servers.shape[0] - 1)
+        new_server = VPN.dict_vpn['vpn_new_connection'][str_vpn] + list(servers.loc[int_serv, ['Flag', 'ID']])
+
+        int_status = subprocess.Popen(new_server, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
         return int_status == 0
 
@@ -226,8 +253,10 @@ class ConnectionManager:
     @vpn_new_connection.instancemethod
     def vpn_new_connection(self, *args):
         """Asks a new connection from the VPN. Honestly should not be used, but I left it there."""
-        int_status = subprocess.Popen(self.vpn_connect + ['fr', str(rdm.randint(550, 720))],
-                                      stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
+        int_serv = rdm.randint(0, self.servers.shape[0] - 1)
+        new_server = self.vpn_connect + list(self.servers.loc[int_serv, ['Flag', 'ID']])
+
+        int_status = subprocess.Popen(new_server, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
         return int_status == 0
 
