@@ -186,7 +186,7 @@ class ConnectionManager:
             str_ip = ConnectionManager.request('https://api.ipify.org', str_tor_pwd=str_tor_pwd)
 
     @hybridmethod
-    def vpn_new_connection(cls, str_vpn):
+    def vpn_new_connection(cls, str_vpn, lst_countries=None):
         """Asks a new connection from the VPN. Honestly should not be used, but I left it there."""
         request = ConnectionManager.request(url='https://nordvpn.com/api/server')
         soup = BeautifulSoup(request, 'lxml')
@@ -197,9 +197,13 @@ class ConnectionManager:
 
         servers['Flag'] = servers['Domain'].astype(str).str.extract(r'^([a-z]{2})\d{2,4}.nordvpn.com$')
         servers['ID'] = servers['Domain'].astype(str).str.extract(r'^[a-z]{2}(\d{2,4}).nordvpn.com$')
-        int_serv = rdm.randint(0, servers.shape[0] - 1)
-        new_server = VPN.dict_vpn['vpn_new_connection'][str_vpn] + list(servers.loc[int_serv, ['Flag', 'ID']])
 
+        if lst_countries is not None:
+            int_serv = rdm.choice(servers.loc[servers['Flag'].isin(lst_countries)].index)
+        else:
+            int_serv = rdm.randint(0, servers.shape[0] - 1)
+
+        new_server = VPN.dict_vpn['vpn_new_connection'][str_vpn] + list(servers.loc[int_serv, ['Flag', 'ID']])
         int_status = subprocess.Popen(new_server, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
 
         return int_status == 0
@@ -251,9 +255,12 @@ class ConnectionManager:
         # just for that. Also it has never happend.
 
     @vpn_new_connection.instancemethod
-    def vpn_new_connection(self, *args):
+    def vpn_new_connection(self, lst_countries=None, *args):
         """Asks a new connection from the VPN. Honestly should not be used, but I left it there."""
-        int_serv = rdm.randint(0, self.servers.shape[0] - 1)
+        if lst_countries is not None:
+            int_serv = rdm.choice(self.servers.loc[self.servers['Flag'].isin(lst_countries)].index)
+        else:
+            int_serv = rdm.randint(0, self.servers.shape[0] - 1)
         new_server = self.vpn_connect + list(self.servers.loc[int_serv, ['Flag', 'ID']])
 
         int_status = subprocess.Popen(new_server, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait()
