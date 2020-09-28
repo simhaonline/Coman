@@ -13,7 +13,7 @@ Created on Thu Feb 22 13:58:25 2018.
 import subprocess                    # to use bash commands (check if a service is active, if internet is on, ect.)
 from stem import Signal              # To get a new TOR connection
 from stem.control import Controller  # To get a new TOR connection
-import requests                      # To manage requests
+import cloudscraper                  # To manage requests
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -111,6 +111,7 @@ class ConnectionManager:
         self.str_ip = '0.0.0.0'
         self.str_ip_old = '0.0.0.0'
         self.str_tor_pwd = str_tor_pwd
+        self.scraper = cloudscraper.create_scraper()
         self._set_useragents(str_useragent)
         self._set_vpn(str_vpn)
 
@@ -160,11 +161,12 @@ class ConnectionManager:
         if dict_user_agent is None:
             dict_user_agent = {'User-Agent':
                                USERAGENTS.lst_useragents[rdm.randint(0, len(USERAGENTS.lst_useragents) - 1)]}
+        scraper = cloudscraper.create_scraper()  # returns a CloudScraper instance
         # Request through TOR or not.
         if str_tor_pwd is not None:
-            request = requests.get(url, proxies=ConnectionManager.dict_proxies, headers=dict_user_agent).text
+            request = scraper.get(url, proxies=ConnectionManager.dict_proxies, headers=dict_user_agent).text
         else:
-            request = requests.get(url, headers=dict_user_agent).text
+            request = scraper.get(url, headers=dict_user_agent).text
 
         return request
 
@@ -209,7 +211,7 @@ class ConnectionManager:
         return int_status == 0
 
     @request.instancemethod
-    def request(self, url, bl_clear=False):
+    def request(self, url, bl_clear=False, dict_user_agent=None):
         """Use whatever setup we are using to make a http request.
 
         Parameters
@@ -224,14 +226,16 @@ class ConnectionManager:
             The result of the request.
         """
         # If the useragent needs to be randomized, we choose one here.
-        if self.lst_useragents is not None:
+        if (self.lst_useragents is not None) and (dict_user_agent is None):
             self.user_agent = {'User-Agent': self.lst_useragents[rdm.randint(0, len(self.lst_useragents) - 1)]}
+        elif self.lst_useragents is not None:
+            self.user_agent = dict_user_agent
 
         # Request through TOR or not.
         if not bl_clear and self.str_tor_pwd is not None:
-            request = requests.get(url, proxies=ConnectionManager.dict_proxies, headers=self.user_agent).text
+            request = self.scraper.get(url, proxies=ConnectionManager.dict_proxies, headers=self.user_agent).text
         else:
-            request = requests.get(url, headers=self.user_agent).text
+            request = self.scraper.get(url, headers=self.user_agent).text
 
         return request
 
